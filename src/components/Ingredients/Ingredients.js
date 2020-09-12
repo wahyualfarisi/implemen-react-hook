@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 import IngredientList from './IngredientList';
+import ErrorModal from './../UI/ErrorModal';
+
 
 function Ingredients() {
   const [ userIngredients, setUserIngredients ] = useState([]); 
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState();
 
   const addIngredient = (ingredient) => {
-
+    setIsLoading(true);
     fetch('https://react-hooks-662ae.firebaseio.com/ingredients.json', {
       method: 'POST',
       body: JSON.stringify(ingredient),
@@ -17,6 +21,7 @@ function Ingredients() {
       }
     })
     .then(res => {
+      setIsLoading(false);
       return res.json()
     })
     .then(res => {
@@ -25,12 +30,18 @@ function Ingredients() {
         { id: res.name , ...ingredient }
       ])
     })
+    .catch(err => {
+      setIsLoading(false);
+      setError(err.message)
+    })
   }
 
   const removeIngredient = (id) => {
+    setIsLoading(true);
     fetch(`https://react-hooks-662ae.firebaseio.com/ingredients/${id}.json`, {
       method: 'DELETE',
     }).then(res => {
+      setIsLoading(false);
       const filterItems = userIngredients.filter(item => item.id !== id);
       setUserIngredients(filterItems)
     })
@@ -49,15 +60,26 @@ function Ingredients() {
         setUserIngredients(ingredients);
   }, [])
 
+  const onCloseModal = () => {
+    setError()
+  }
 
   return (
     <div className="App">
-      <IngredientForm addIngredients={addIngredient} />
+      <IngredientForm 
+        isLoading={isLoading}
+        addIngredients={addIngredient} 
+      />
 
       <section>
         <Search onFilterItem={onFilterItem} />
-        <IngredientList ingredients={userIngredients} onRemoveItem={(id) => removeIngredient(id)} />
+        <IngredientList 
+          isLoading={isLoading}
+          ingredients={userIngredients} 
+          onRemoveItem={(id) => removeIngredient(id)} />
       </section>
+
+      {error && <ErrorModal onClose={onCloseModal}>{error}</ErrorModal> }
     </div>
   );
 }

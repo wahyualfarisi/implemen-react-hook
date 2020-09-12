@@ -13,7 +13,8 @@ const IngredientForm = React.memo(props => {
   const submitHandler = event => {
     event.preventDefault();
     props.addIngredients({ title: inputTitle, amount: inputAmount });
-    
+    setInputAmount('');
+    setInputTitle('')
 
   };
 
@@ -32,7 +33,7 @@ const IngredientForm = React.memo(props => {
           <div className="ingredient-form__actions">
             <button type="submit">Add Ingredient</button>
           </div>
-        </form>
+          </form>
       </Card>
     </section>
   );
