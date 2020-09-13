@@ -1,4 +1,4 @@
-import React, { useState, useReducer, useCallback } from 'react';
+import React, { useReducer, useCallback } from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
@@ -19,14 +19,29 @@ const IngredientReducer = (currentIngredient, action) => {
   }
 }
 
+const httpReducer = (currentHttpState, action) => {
+  switch(action.type)
+  {
+    case 'SEND':
+      return { loading: true, error: null  }
+    case 'RESPONSE':
+      return { ...currentHttpState, loading: false }
+    case 'ERROR':
+      return { loading: false, error: action.errorMessage }
+    case 'CLEAR':
+      return { loading: false, error: null }
+    default:
+      throw new Error('command not found');
+  }
+}
+
 function Ingredients() {
   const [ userIngredients, dispatch ] = useReducer(IngredientReducer, [])
 
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState();
+  const [ httpState, dispatchHttp ] = useReducer(httpReducer, { loading: false, error: null })
 
   const addIngredient = (ingredient) => {
-    setIsLoading(true);
+    dispatchHttp({ type: 'SEND' });
     fetch('https://react-hooks-662ae.firebaseio.com/ingredients.json', {
       method: 'POST',
       body: JSON.stringify(ingredient),
@@ -35,25 +50,27 @@ function Ingredients() {
       }
     })
     .then(res => {
-      setIsLoading(false);
+      dispatchHttp({ type: 'RESPONSE' });
       return res.json()
     })
     .then(res => {
       dispatch( { type: 'ADD', ingredient:{ id: res.name , ...ingredient }  } )
     })
     .catch(err => {
-      setIsLoading(false);
-      setError(err.message)
+      dispatchHttp({ type: 'ERROR', errorMessage: err.message })
     })
   }
 
   const removeIngredient = (id) => {
-    setIsLoading(true);
+    dispatchHttp({ type: 'SEND' })
     fetch(`https://react-hooks-662ae.firebaseio.com/ingredients/${id}.json`, {
       method: 'DELETE',
     }).then(res => {
-      setIsLoading(false);
+      dispatchHttp({ type: 'RESPONSE' })
       dispatch({ type: 'DELETE', id: id })
+    })
+    .catch(err => {
+      dispatchHttp({ type: 'ERROR', errorMessage: 'Failed to remove' })
     })
 
   }
@@ -71,25 +88,25 @@ function Ingredients() {
   }, [])
 
   const onCloseModal = () => {
-    setError()
+    dispatchHttp({ type: 'CLEAR' })
   }
 
   return (
     <div className="App">
       <IngredientForm 
-        isLoading={isLoading}
+        isLoading={httpState.loading}
         addIngredients={addIngredient} 
       />
 
       <section>
         <Search onFilterItem={onFilterItem} />
         <IngredientList 
-          isLoading={isLoading}
+          isLoading={httpState.loading}
           ingredients={userIngredients} 
           onRemoveItem={(id) => removeIngredient(id)} />
       </section>
 
-      {error && <ErrorModal onClose={onCloseModal}>{error}</ErrorModal> }
+      {httpState.error && <ErrorModal onClose={onCloseModal}>{httpState.error}</ErrorModal> }
     </div>
   );
 }
